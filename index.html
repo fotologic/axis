@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Axis — a table for thinking about photographs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400&family=Cormorant+Garamond:wght@400;500&family=Nunito:wght@400;500;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --pink:#CB216E; --text:#1c1c1a; --muted:#9a9690; --border:#e4e0da;
+    --tape-a:#4a8acb; --tape-b:#3a78bd; --accent:#F0E4A6;
+    --display:'Quicksand',sans-serif; --ui:'Nunito',sans-serif;
+    --serif:'Cormorant Garamond',serif;
+    --hand:'Caveat',cursive; --ink:#2d2d30;
+  }
+  html,body{height:100%}
+  body{background:#fff;color:var(--text);font-family:var(--ui);overflow:hidden}
+  .app{height:100vh;display:flex;flex-direction:column}
+
+  /* header */
+  header{padding:20px 32px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:16px}
+  .wordmark{display:flex;align-items:baseline}
+  .wordmark a{font-family:var(--display);font-size:15px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+    text-decoration:none;color:var(--text);transition:color .2s}
+  .wordmark a span{font-weight:500;color:var(--muted);transition:color .2s}
+  .wordmark a:hover,.wordmark a:hover span{color:var(--pink)}
+  .wordmark .tag{font-family:var(--display);font-size:10px;font-weight:500;letter-spacing:.14em;color:var(--muted);
+    margin-left:10px;text-transform:uppercase}
+  .header-tools{display:flex;gap:7px;flex-wrap:wrap}
+  .pill{font-family:var(--display);font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;
+    padding:8px 18px;background:none;border:1px solid var(--border);color:var(--muted);
+    cursor:pointer;border-radius:20px;transition:all .18s}
+  .pill:hover{border-color:var(--pink);color:var(--pink)}
+
+  /* stage */
+  #stage{flex:1;position:relative;overflow:hidden}
+  .zone-note{position:absolute;top:18px;right:32px;
+    font-size:11px;font-weight:500;letter-spacing:.04em;color:var(--muted);white-space:nowrap}
+  .tape{position:absolute;top:46%;left:3%;width:94%;height:18px;opacity:.92;transform:rotate(-.3deg);
+    background:
+      repeating-linear-gradient(90deg,rgba(255,255,255,.06) 0 1px,transparent 1px 3px),
+      linear-gradient(180deg,var(--tape-a),var(--tape-b))}
+  .postit{position:absolute;top:calc(46% - 61px);width:141px;height:141px;
+    display:flex;align-items:center;justify-content:center;text-align:center;
+    background:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.08);padding:10px}
+  .pit-label{font-family:var(--hand);color:var(--ink);font-weight:400;text-transform:uppercase;
+    line-height:1;white-space:nowrap;display:inline-block;font-size:var(--pit-size,24px)}
+  .postit.left{left:6%;transform:rotate(-1.4deg)}
+  .postit.right{right:6%;transform:rotate(1.1deg)}
+
+  /* cards */
+  .card{position:absolute;cursor:grab;touch-action:none;z-index:2;
+    background:#fff;border:1px solid var(--border);padding:4px;line-height:0;
+    box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .card.dragging{cursor:grabbing}
+  .card img{display:block;max-width:184px;max-height:184px;width:auto;height:auto;pointer-events:none}
+  .card .placeholder{width:128px;height:150px;display:flex;align-items:center;justify-content:center;
+    color:#c9c4ba;font-size:10.5px;letter-spacing:.04em;background:#faf8f4}
+
+  /* bottom axis bar */
+  .word-area{flex-shrink:0;padding:16px 32px 20px;border-top:1px solid var(--border);
+    display:flex;flex-direction:column;align-items:center;gap:11px}
+  .axes{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+  .word-btn{font-family:var(--display);font-size:12px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
+    padding:9px 20px;background:none;border:1px solid var(--border);color:var(--muted);
+    cursor:pointer;border-radius:20px;transition:all .18s;user-select:none}
+  .word-btn:hover{border-color:var(--pink);color:var(--pink)}
+  .word-btn.active{border-color:var(--pink);background:var(--pink);color:#fff}
+  .about-link{font-size:11px;font-weight:500;letter-spacing:.06em;
+    color:var(--muted);background:none;border:none;cursor:pointer;transition:color .18s}
+  .about-link:hover{color:var(--pink)}
+
+  /* modals */
+  .scrim{position:fixed;inset:0;z-index:100000;background:rgba(255,246,243,.97);backdrop-filter:blur(4px);
+    display:none;align-items:center;justify-content:center;padding:24px}
+  .scrim.open{display:flex}
+  .panel{position:relative;background:#fff;border:1px solid var(--border);box-shadow:0 8px 40px rgba(0,0,0,.08);
+    max-width:620px;width:100%;max-height:86vh;overflow:auto;padding:54px 62px}
+  .panel .eyebrow{font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--pink);margin-bottom:22px;display:flex;align-items:center}
+  .panel h3{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--muted);margin:24px 0 7px}
+  .panel p{font-family:var(--serif);font-size:17px;font-weight:400;line-height:1.75;color:var(--text);margin-bottom:16px}
+  .panel a{color:var(--pink);text-decoration:none;border-bottom:1px solid rgba(203,33,110,.25);transition:border-color .2s}
+  .panel a:hover{border-color:var(--pink)}
+  .panel .links{font-size:13px;display:flex;flex-direction:column;gap:6px;margin-top:4px}
+  .panel .links a{font-weight:600;border-bottom:none}
+  .panel .links a:hover{color:var(--text)}
+  .swatch{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:9px;border:1px solid rgba(0,0,0,.12)}
+  .close{position:absolute;top:18px;right:22px;background:none;border:none;font-size:26px;font-weight:300;
+    line-height:1;color:var(--muted);cursor:pointer;transition:color .2s}
+  .close:hover{color:var(--pink)}
+
+  /* zoom */
+  .zoom-card{position:relative;perspective:1600px;max-width:94vw}
+  .zoom-inner{position:relative;width:100%;height:100%;transition:transform .5s ease;transform-style:preserve-3d}
+  .zoom-card.flipped .zoom-inner{transform:rotateY(180deg)}
+  .zoom-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;
+    background:#fff;border:1px solid var(--border);box-shadow:0 8px 40px rgba(0,0,0,.10);
+    display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .zoom-front{padding:0}
+  .zoom-front img{width:100%;height:100%;object-fit:contain;display:block}
+  .zoom-front .placeholder{color:#c9c4ba;font-size:13px}
+  .zoom-back{transform:rotateY(180deg);padding:40px;text-align:center;flex-direction:column;overflow:auto}
+  .zoom-cap{font-family:var(--serif);font-size:21px;font-weight:400;line-height:1.5;color:var(--text);max-width:34ch}
+  .zoom-bio{font-family:var(--serif);font-size:14.5px;font-weight:400;line-height:1.62;color:var(--muted);max-width:46ch;margin-top:18px}
+  .zoom-flip{position:absolute;bottom:-50px;left:50%;transform:translateX(-50%);
+    font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+    padding:8px 18px;background:none;border:1px solid rgba(203,33,110,.4);color:var(--pink);
+    cursor:pointer;border-radius:20px;transition:all .18s}
+  .zoom-flip:hover{background:var(--pink);color:#fff;border-color:var(--pink)}
+  .zoom-card .close{top:-42px;right:0}
+
+  @media (prefers-reduced-motion:reduce){.zoom-inner{transition:none}.pill,.word-btn{transition:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="wordmark">
+      <a href="https://www.photopedagogy.com" target="_blank" rel="noopener">Photo<span>Pedagogy</span></a>
+      <span class="tag">Axis</span>
+    </div>
+    <div class="header-tools">
+      <button class="pill" id="btn-upload">Upload</button>
+      <button class="pill" id="btn-reset" hidden>Practice</button>
+      <button class="pill" id="btn-shuffle">Shuffle</button>
+      <button class="pill" id="btn-export">Export</button>
+      <button class="pill" id="btn-info">Info</button>
+    </div>
+  </header>
+
+  <main id="stage" aria-label="Worktable">
+    <div class="zone-note no-export">Doesn't belong on this line? Leave it up here.</div>
+    <div class="tape" aria-hidden="true"></div>
+    <div class="postit left" id="pit-left"><span class="pit-label">Mirror</span></div>
+    <div class="postit right" id="pit-right"><span class="pit-label">Window</span></div>
+  </main>
+
+  <div class="word-area">
+    <div class="axes" id="axes" role="group" aria-label="Choose an axis"></div>
+    <button class="about-link" id="btn-axis-info">About this axis</button>
+  </div>
+</div>
+
+<!-- Info -->
+<div class="scrim" id="info-scrim" role="dialog" aria-modal="true" aria-label="Info">
+  <div class="panel">
+    <button class="close" data-close aria-label="Close">×</button>
+    <div class="eyebrow">About this table</div>
+    <h3>What this is</h3>
+    <p>This is a table, a line of tape and two labels for thinking about photographs. Choose an axis, the line running between two opposed ideas, and arrange a set of pictures along it. It's a sister to <a href="https://fotologic.github.io/sequence/" target="_blank" rel="noopener">Sequence</a>. That tool helps you think about the order of images. This one is about where they sit on an imaginary line.</p>
+    <h3>Why it exists</h3>
+    <p>Photographs are usually talked about as though they fall into types, this kind or that kind. They rarely do. Most pictures sit somewhere between the labels, and the more carefully you look the harder they are to pin down. The thinking happens in the dragging and placing along the line, in the moment you go to set a picture down and find your hand hovering. Both John Szarkowski (<a href="https://www.photopedagogy.com/mirrors-or-windows.html" target="_blank" rel="noopener">Mirrors and Windows</a>) and Abigail Solomon-Godeau (<a href="https://www.photopedagogy.com/insideout.html" target="_blank" rel="noopener">Insider/Outsider</a>) accepted that photographs resist settled definitions. They shift and slide depending on who's doing the looking. This tool is built around that uncertainty. It's a way of looking and arguing and it will not do the deciding for you.</p>
+    <h3>How to use it</h3>
+    <p>Pick an axis from the buttons, and its two words appear on the Post-it notes at either end of the line. A set of practice pictures is available on the table face up and without their captions, so you meet each one before you know who made it. Drag a picture along the line according to how far it leans one way or the other. You can interpret the words yourself or read about where they come from and what they might suggest. The middle is for pictures that genuinely face both ways at once. It is not a parking space for the ones you would rather not decide about. If the axis is the wrong idea for a picture altogether, and some may not want to be anywhere on the line, lift it into the space above. Click a picture to see it larger, and turn it over there to read the caption. When you are happy with the arrangement, export it as a transparent image to keep for your records. Nothing here is saved, so take what you want and then clear the table and run the same pictures against a different axis. They will not sit still, which is the whole point.</p>
+    <p>Then it's time to upload a few of your own pictures and repeat the process.</p>
+    <h3>About the pictures</h3>
+    <p>These are works by artists shown and championed by <a href="https://autograph.org.uk/" target="_blank" rel="noopener">Autograph</a>, a gallery that has spent decades celebrating photography about race, identity, representation and human rights. The axis is a way to look at and think about them. It's not the last word and you are free to judge whether a particular line does a picture an injustice. The images here are low-resolution stand-ins. To see the work properly, visit Autograph's gallery in London and look through their <a href="https://autograph.org.uk/about-us/autographs-collection-of-photography" target="_blank" rel="noopener">collection</a> and <a href="https://autograph.org.uk/past-exhibitions/" target="_blank" rel="noopener">exhibitions</a> online.</p>
+    <h3>Rights, and a request</h3>
+    <p>This is a free resource, made in good faith for education. The photographs belong to the artists who made them, and they are shown here small and at low resolution so that students can learn to look closely. Nothing is for sale, and nothing here may be used commercially. If you are one of the artists, or Autograph, and would rather a picture were not shown, please say so and it will be taken down at once, with no fuss. You can reach us through <a href="https://www.photopedagogy.com/contact.html" target="_blank" rel="noopener">PhotoPedagogy</a>.</p>
+  </div>
+</div>
+
+<!-- Per-axis -->
+<div class="scrim" id="axis-scrim" role="dialog" aria-modal="true" aria-label="About this axis">
+  <div class="panel" id="axis-panel"><button class="close" data-close aria-label="Close">×</button></div>
+</div>
+
+<!-- Zoom -->
+<div class="scrim" id="zoom-scrim" role="dialog" aria-modal="true" aria-label="Enlarged picture">
+  <div class="zoom-card" id="zoom-card">
+    <button class="close" data-close aria-label="Close">×</button>
+    <div class="zoom-inner" id="zoom-inner">
+      <div class="zoom-face zoom-front"><img id="zoom-img" alt="" /></div>
+      <div class="zoom-face zoom-back"><div class="zoom-cap" id="zoom-cap"></div><div class="zoom-bio" id="zoom-bio"></div></div>
+    </div>
+    <button class="zoom-flip" id="zoom-flip">Show caption</button>
+  </div>
+</div>
+
+<input type="file" id="file" accept="image/*" multiple hidden />
+
+<script>
+const AXES = [
+  { id:"mirrors-windows", left:"Mirror", right:"Window", colour:"#F0E4A6",
+    title:"Mirrors / Windows",
+    body:"John Szarkowski's idea, from a 1978 exhibition at the Museum of Modern Art. A mirror reflects the photographer back at you, a private sensibility projected onto the world. A window lets you look past them at the world itself. He meant a single line with two poles, and expected most pictures to gather near the middle, shiftable across his imaginary equator depending on how you read them.",
+    links:[["photopedagogy: Mirrors or Windows","https://www.photopedagogy.com/mirrors-or-windows.html"],
+           ["MoMA: the 1978 exhibition","https://www.moma.org/calendar/exhibitions/2347"]]},
+  { id:"insider-outsider", left:"Insider", right:"Outsider", colour:"#EFC9D6",
+    title:"Insider / Outsider",
+    body:"Abigail Solomon-Godeau's question: where does the photographer stand in relation to the people in the frame? The insider belongs to the world being pictured. The outsider arrives from elsewhere, with the distance of a visitor. She spends the essay complicating the assumption that the inside view is the honest one. Notice how little of this you can read from the picture itself, so this axis sends you looking for the story behind the frame.",
+    links:[["photopedagogy: Inside / Out","https://www.photopedagogy.com/insideout.html"],
+           ["Solomon-Godeau, 'Inside/Out' (essay)","https://www.photopedagogy.com/uploads/5/0/0/9/50097419/week_5_abigail_solomon-godeau_inside_out.pdf"]]},
+  { id:"found-staged", left:"Found", right:"Staged", colour:"#CDE0BE",
+    title:"Found / Staged",
+    body:"Does the photograph take the world as it finds it, or make the scene happen? The critic A.D. Coleman named the second the directorial mode in 1976, tracing it from Victorian stagers to Cindy Sherman and Jeff Wall. The complication Coleman pressed is that every photograph is a kind of fiction, since even the most found street picture has been selected, framed and timed by someone.",
+    links:[["A.D. Coleman, 'The Directorial Mode'","https://www.artforum.com/print/197607/the-directorial-mode-notes-toward-a-definition-37959"],
+           ["Jeff Wall on his staged pictures","https://www.theguardian.com/artanddesign/2015/nov/03/jeff-wall-photography-marian-goodman-gallery-show"]]},
+  { id:"hunter-farmer", left:"Hunter", right:"Farmer", colour:"#F2D6AE",
+    title:"Hunter / Farmer",
+    body:"Jeff Wall's distinction, reported by Charlotte Cotton. Hunters track images down and capture them, working in the instant. Farmers cultivate them slowly over time, building a picture through preparation and patience. It asks what you were doing when you made the photograph rather than what it looks like, so you usually need the photographer's own account to place a picture here with any confidence.",
+    links:[["photopedagogy: Hunters and Farmers","https://www.photopedagogy.com/threshold-concept-1.html"],
+           ["Jeff Wall on how he works","https://www.theguardian.com/artanddesign/2015/nov/03/jeff-wall-photography-marian-goodman-gallery-show"]]},
+  { id:"deadpan-expressive", left:"Deadpan", right:"Expressive", colour:"#DACBEC",
+    title:"Deadpan / Expressive",
+    body:"Charlotte Cotton's term for the cool, detached, frontal manner of much recent art photography, with a lineage from the New Objectivity through Bernd and Hilla Becher to the Düsseldorf School. The expressive pole is everything deadpan holds back. The twist to keep in mind is that deadpan neutrality is itself a performance, since the choice of what to point the camera at still carries the maker's politics.",
+    links:[["The Düsseldorf School of Photography","https://en.wikipedia.org/wiki/D%C3%BCsseldorf_School_of_Photography"],
+           ["Bernd and Hilla Becher","https://en.wikipedia.org/wiki/Bernd_and_Hilla_Becher"]]},
+  { id:"lens-shutter", left:"Lens", right:"Shutter", colour:"#C2D9EC",
+    title:"Lens / Shutter",
+    body:"David Campany's way of sorting photographers by which part of the camera holds their attention. The lens is about space and optics, perspective and description, how a picture renders the world and builds its own surface. The shutter is about time and duration, the held instant or the long exposure that lets time gather. Campany adds a third element, the light-sensitive surface with its question of touch and contact, which here is folded back into the lens side as part of how the image is made.",
+    links:[["David Campany, 'The Lens, the Shutter and the Light Sensitive Surface'","https://davidcampany.com/some-remarks-on-the-lens-the-shutter-and-the-light-sensitive-surface/"],
+           ["Henri Cartier-Bresson and the decisive moment","https://en.wikipedia.org/wiki/Henri_Cartier-Bresson"]]}
+];
+
+const FALLBACK_MANIFEST = { images:[
+  {file:"images/fani-kayode-nothing-to-lose.jpg",caption:"Rotimi Fani-Kayode, 'Nothing to Lose', 1989",bio:"Rotimi Fani-Kayode (1955-1989) was born in Lagos and came to England as a child after his family fled the Biafran war, later training in the United States before settling in Brixton. A founder of Autograph, he made staged black-and-white studio portraits of the Black male body that drew on Yoruba spirituality and his own life as a gay African in exile. He treated the photograph as a place of desire and ritual rather than record."},
+  {file:"images/gregory-autoportrait.jpg",caption:"Joy Gregory, from the series 'Autoportrait', 1989-1990",bio:"Joy Gregory (b. 1959) is a British artist of Jamaican heritage who trained at Manchester Polytechnic and the Royal College of Art and has long been associated with Autograph. She works across many processes, from self-portraiture to cameraless techniques such as the cyanotype, using the body, hair and everyday objects to examine beauty, race and femininity. The often handmade, antique methods are part of the meaning."},
+  {file:"images/shelton-tulse-hill.jpg",caption:"Syd Shelton, 'Tulse Hill School, Brixton', 1977",bio:"Syd Shelton (b. 1947) is an English photographer who trained as a painter in Yorkshire and became one of the defining image-makers of Rock Against Racism in the late 1970s. He photographed Black British life and anti-racist struggle as a committed white participant who stood alongside his subjects rather than visiting them. His pictures belong to the engaged, political documentary tradition."},
+  {file:"images/pollard-valentine-days.jpg",caption:"Ingrid Pollard, 'The Valentine Days #2', 2017",bio:"Ingrid Pollard (b. 1953) was born in Georgetown, Guyana, and works in London, making carefully constructed photographs that question who is felt to belong in the English landscape. She often hand-tints or stages her images and works in series, using portrait and landscape to unsettle ideas of Englishness and rural space. Her position is that of an insider interrogating places that treat her as a stranger."},
+  {file:"images/gupta-untitled-06.jpg",caption:"Sunil Gupta, 'Untitled #06', 2008",bio:"Sunil Gupta (b. 1953) was born in New Delhi, grew up partly in Canada, and is based in London, having learned photography in the documentary tradition in New York. A gay activist as well as an artist, he makes work about queer desire, migration and HIV, moving between street photography and elaborately staged scenes. He photographs communities he belongs to, so his insider position is openly declared."},
+  {file:"images/shonibare-effnik.jpg",caption:"Yinka Shonibare, from the series 'Effnik', 1997",bio:"Yinka Shonibare (b. 1962) is a British-Nigerian artist who grew up between London and Lagos and trained at Goldsmiths. He is known for using Dutch wax 'African' fabric to unpick the entangled histories of empire and identity, and for staged, theatrical pictures that toy with class, disability and the trappings of Victorian Britain. His images are deliberately constructed and ironic."},
+  {file:"images/lam-latifs-granddaughter.jpg",caption:"Anthony Lam, 'Latif's Granddaughter', 1992-93",bio:"Anthony Lam (b. 1966) was born in Hong Kong and works in Britain on themes of identity, culture and place. He spent years quietly documenting the streets and communities of the East End, especially the Bengali neighbourhoods around Spitalfields and Tower Hamlets. He photographs as a fellow migrant making a record of a place in change."},
+  {file:"images/ajetunmobi-east-end-portraits.jpg",caption:"Bandele 'Tex' Ajetunmobi, from the series 'East End Portraits', 1950-1980",bio:"Bandele 'Tex' Ajetunmobi (1921-1994) was a Nigerian-born photographer who settled in London's East End and was largely self-taught, working with a hand-held camera despite failing eyesight. Over several decades he made warm black-and-white portraits of his neighbours and of the African and Caribbean communities around him. He worked as an insider, picturing the people among whom he lived."},
+  {file:"images/jones-black-house.jpg",caption:"Colin Jones, from the series 'The Black House', 1973-76",bio:"Colin Jones (1936-2021) was an English photographer, a former Royal Ballet dancer who became a photojournalist for the Observer and others. His best-known work, The Black House, documented a hostel for young Black people in north London in the mid-1970s, made over a sustained period of access. He worked as a sympathetic but commissioned outsider, which is part of what the pictures ask you to weigh."},
+  {file:"images/ajamu-bodybuilder-in-bra.jpg",caption:"Ajamu X, 'Bodybuilder in Bra', 1990",bio:"Ajamu X (b. 1963), known simply as Ajamu, is a British photographer from Huddersfield who makes bold black-and-white studio portraits of the Black queer body. An archivist and activist as well as an artist, he celebrates desire, intimacy and gender play from firmly inside the communities he photographs. The studio is his chosen ground, so the work is staged and self-possessed."},
+  {file:"images/desai-portals.jpg",caption:"Poulomi Desai, from the series 'Our cultures are the portals – the gateways between one world and the next', 2020",bio:"Poulomi Desai is a British South Asian artist, musician and curator based in London, with roots in the radical Asian, anti-racist and queer cultures of 1970s and 1980s East London. She works across photography, performance and sound, founded the arts organisation Usurp, and treats the camera as one instrument among many for disturbing how marginalised people are seen. Her images lean towards the experimental and the staged."},
+  {file:"images/silvestri-cacao.jpg",caption:"Aida Silvestri, 'Cacao', from the series 'Contagion: Colour on the Front Line', 2020",bio:"Aida Silvestri (b. 1978) was born in Eritrea and works in London, having studied photography at Kensington and Chelsea College and the University of Westminster. A self-described visual activist, she makes experimental, mixed-media documentary portraits about migration, identity and health, often working into the surface of the print and adding text. Cacao comes from her Autograph commission on Covid-19 and frontline workers of colour."},
+  {file:"images/kallat-united-kingdom.jpg",caption:"Reena Saini Kallat, 'United Kingdom', from the series 'Pattern Recognition', 2022",bio:"Reena Saini Kallat (b. 1973) was born in New Delhi and works in Mumbai across photography, drawing, sculpture and installation. Her Pattern Recognition series turns the official languages of borders, passports and visas into decorative pattern, examining migration and the bureaucracy of belonging. Her approach is conceptual and constructed."},
+  {file:"images/ehlers-magic-real.jpg",caption:"Jeannette Ehlers, 'We're Magic. We're Real. #3' (From Sunset to Sunrise) #9, 2021-22",bio:"Jeannette Ehlers (b. 1973) is a Danish-Trinidadian artist based in Copenhagen who works with photography, video and performance around the legacies of slavery and the colonial Atlantic. Her staged, often spectral images use her own body and ritual to make buried histories visible. The work is performative and symbolic rather than documentary."},
+  {file:"images/nadeem-california.jpg",caption:"Henna Nadeem, 'California', 1999-2000",bio:"Henna Nadeem (b. 1966) is a British artist of Pakistani and English heritage who trained at the Royal College of Art. She is known for cut and collaged pictures that overlay landscape photographs with decorative Islamic and other patterns, interrupting the picturesque with ornament. The work is made by hand on the page rather than out in the field."},
+  {file:"images/francis-pleasant-land.jpg",caption:"Jermaine Francis, from the series 'A Pleasant Land - The Muted Sounds of a Black Odyssey', 2024",bio:"Jermaine Francis is a British photographer based in London, working across street photography, documentary and the personal essay, with a recurring interest in identity, memory and belonging in Britain. A Pleasant Land turns to the English landscape and everyday scenes to reflect on the Black experience and a sense of place. He moves between the caught moment and the quietly composed."},
+  {file:"images/abi-morocco-funmilayo-jon-abe.jpg",caption:"Abi Morocco Studios, 'Funmilayo and Jon Abe holding their medium format camera', Aina Street, Shogunle, 1974",bio:"Abi Morocco Photos was the studio of the husband-and-wife photographers John Abe (1946-2024) and Funmilayo Abe (b. 1953), who worked from Aina Street in the Shogunle district of Lagos from the early 1970s to 2006. Largely self-taught, they made studio portraits, home commissions and street pictures of everyday Lagosians at their most stylish. This is their own self-portrait, so here the makers and the subjects are the same people."},
+  {file:"images/smith-wanderer.jpg",caption:"Marie Smith, from the series 'The Wanderer', 2021-ongoing",bio:"Marie Smith is a British visual artist and writer, born and based in London, with an MA in History of Art with Photography from Birkbeck. In The Wanderer they follow a persona of their own making through landscapes, working in film and cyanotype and often leaving the cable release or tripod in shot to admit the camera. Smith is at once the maker and the subject, picturing the Black, non-binary body in nature."},
+  {file:"images/barnor-two-friends-accra.jpg",caption:"James Barnor, 'Untitled #2, two friends dressed for a church celebration', Accra, 1970s",bio:"James Barnor (b. 1929) is a Ghanaian photographer and a pioneer of his country's image-making, who ran the Ever Young studio in Accra, shot for Drum magazine, and helped bring colour photography to Ghana while also working in London. His pictures move between studio portrait and the street, recording Ghanaian independence and the Black diaspora in Britain with warmth. He photographs his own world from the inside."},
+  {file:"images/cole-harlem.jpg",caption:"Ernest Cole, Harlem, New York, c. 1970",bio:"Ernest Cole (1940-1990) was a South African photographer whose book House of Bondage exposed the daily workings of apartheid and forced him into exile in 1966. In America he turned his camera on Black life in Harlem and the rural South, a Black photographer who was also a stranger far from home. His negatives were lost for decades and only rediscovered after his death."},
+  {file:"images/el-tantawy-she-fights.jpg",caption:"Laura El-Tantawy, from the series 'She Fights in the Fields', 2022",bio:"Laura El-Tantawy (b. 1980) is an Egyptian photographer raised between Egypt, the United States and Britain, known for lyrical, impressionistic colour work such as her book on Tahrir Square. She works at the edge of documentary, favouring mood, memory and ambiguity over plain reportage. She Fights in the Fields turns to women's labour on the land."},
+  {file:"images/salmon-somerleyton-6.jpg",caption:"Clovis Salmon (aka Sam the Wheels), two film stills from 'Somerleyton 6', a documentary film about the aftermath of the Brixton Riots, 1981",bio:"Clovis Salmon (b. 1928), known as Sam the Wheels, came to Britain from Jamaica with the Windrush generation and settled in Brixton. Using a hand-held 8mm camera, he filmed his own community from the 1960s onward, including the aftermath of the 1981 Brixton uprising. His footage is the record of an insider filming the street where he lived."},
+  {file:"images/soleimani-magistrate.jpg",caption:"Sheida Soleimani, 'Magistrate', from the series 'Flyways', 2024",bio:"Sheida Soleimani (b. 1990) is an Iranian-American artist, the daughter of political refugees, who teaches in the United States and is also a wildlife rehabilitator. She builds elaborate studio tableaux from collage, props and taxidermy to address human rights, migration and state violence. Her pictures are wholly constructed, so nothing in them is found."},
+  {file:"images/muholi-ntozakhe-ii.jpg",caption:"Zanele Muholi, 'Ntozakhe II', Parktown, 2016",bio:"Zanele Muholi (b. 1972) is a South African visual activist who documents and celebrates Black LGBTQIA+ life in South Africa. Their ongoing series Somnyama Ngonyama, to which this self-portrait belongs, deepens the skin tones and builds crowns and props from everyday materials, meeting the viewer's eye head on. The work is staged, political and made from within the community it pictures."},
+  {file:"images/gregory-girl-thing.jpg",caption:"Joy Gregory, from the series 'Girl Thing', 2002-05",bio:"Joy Gregory (b. 1959) is a British artist of Jamaican heritage, trained at Manchester Polytechnic and the Royal College of Art and long associated with Autograph. Much of her work is cameraless, made by laying objects straight onto light-sensitive paper, as in this cyanotype, so the picture is a contact trace rather than a lens image. She uses such methods to think about beauty, femininity and the things women are given to wear."},
+  {file:"images/perrier-ghana.jpg",caption:"Eileen Perrier, from the series 'Ghana', 1995-1996",bio:"Eileen Perrier (b. 1974) is a British photographer of Ghanaian and Dominican heritage who trained at the Surrey Institute and the Royal College of Art. She makes calm, frontal studio and location portraits, often in series, drawing on the conventions of the family photograph and the typology. This work was made on a return to Ghana, so she stands between insider and visitor."},
+  {file:"images/jackson-small-island.jpg",caption:"Andrew Jackson, from the series 'From a Small Island', 2018",bio:"Andrew Jackson is a British photographer of Jamaican heritage, based in Birmingham, whose work deals with migration, family and memory, and with the Windrush generation's idea of home. From a Small Island was made in Jamaica, looking at the island his parents left, in a loose and personal documentary style. He photographs as a returning son rather than a detached observer."}
+]};
+
+const stage=document.getElementById("stage");
+const pitL=document.getElementById("pit-left"), pitR=document.getElementById("pit-right");
+let manifest=FALLBACK_MANIFEST, currentAxis=AXES[0], mode="practice", cards=[], zTop=10;
+
+(async function init(){
+  try{ const res=await fetch("manifest.json",{cache:"no-store"});
+    if(res.ok){ const m=await res.json(); if(m&&Array.isArray(m.images)) manifest=m; } }catch(e){}
+  buildAxisButtons(); selectAxis(AXES[0],true); computePitSize(); buildPractice(); wireUI();
+  if(document.fonts&&document.fonts.ready){ document.fonts.ready.then(computePitSize); }
+})();
+
+function buildAxisButtons(){
+  const wrap=document.getElementById("axes");
+  AXES.forEach(ax=>{
+    const b=document.createElement("button");
+    b.className="word-btn"; b.textContent=ax.left+" / "+ax.right;
+    b.setAttribute("aria-pressed","false");
+    b.addEventListener("click",()=>selectAxis(ax));
+    ax._btn=b; wrap.appendChild(b);
+  });
+}
+function computePitSize(){
+  const max=pitL.clientWidth-26;
+  const probe=document.createElement("span"); probe.className="pit-label";
+  probe.style.position="absolute"; probe.style.visibility="hidden";
+  probe.style.left="-9999px"; probe.style.whiteSpace="nowrap";
+  pitL.appendChild(probe);
+  let size=36;
+  for(;size>12;size--){
+    probe.style.fontSize=size+"px"; let ok=true;
+    for(const ax of AXES){ for(const w of [ax.left,ax.right]){ probe.textContent=w;
+      if(probe.offsetWidth>max){ ok=false; break; } } if(!ok) break; }
+    if(ok) break;
+  }
+  probe.remove();
+  document.documentElement.style.setProperty("--pit-size",size+"px");
+}
+function selectAxis(ax,silent){
+  const changed=ax.id!==currentAxis.id; currentAxis=ax;
+  document.documentElement.style.setProperty("--accent",ax.colour);
+  pitL.querySelector(".pit-label").textContent=ax.left;
+  pitR.querySelector(".pit-label").textContent=ax.right;
+  AXES.forEach(a=>{ if(a._btn){ a._btn.classList.toggle("active",a.id===ax.id);
+    a._btn.setAttribute("aria-pressed",a.id===ax.id?"true":"false"); }});
+  if(changed&&!silent) stackPile();
+}
+
+function clearCards(){ cards.forEach(c=>c.el.remove()); cards=[]; }
+function makeCard(node,meta){
+  const el=document.createElement("div"); el.className="card"; el.tabIndex=0;
+  el.appendChild(node); stage.appendChild(el);
+  const card={el,caption:meta.caption||null,src:meta.src||null,bio:meta.bio||null};
+  attachDrag(card); cards.push(card); return card;
+}
+function buildPractice(){
+  clearCards(); mode="practice"; document.getElementById("btn-reset").hidden=true;
+  manifest.images.forEach(it=>{
+    const img=document.createElement("img"); img.alt=""; img.src=it.file;
+    img.addEventListener("load",()=>stackPile());
+    img.addEventListener("error",()=>{ const ph=document.createElement("div");
+      ph.className="placeholder"; ph.textContent="image pending"; img.replaceWith(ph); });
+    makeCard(img,{caption:it.caption,src:it.file,bio:it.bio});
+  });
+  shuffleStack();
+}
+function loadOwn(files){
+  clearCards(); mode="own"; document.getElementById("btn-reset").hidden=false;
+  [...files].forEach(f=>{ if(!f.type.startsWith("image/"))return;
+    const url=URL.createObjectURL(f); const img=document.createElement("img"); img.alt=""; img.src=url;
+    img.addEventListener("load",()=>stackPile());
+    makeCard(img,{caption:null,src:url}); });
+  stackPile();
+}
+function shuffleStack(){
+  for(let i=cards.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));
+    [cards[i],cards[j]]=[cards[j],cards[i]]; }
+  stackPile(true);
+}
+function stackPile(reRotate){
+  const w=stage.clientWidth,h=stage.clientHeight;
+  const cx=w/2, cy=h/2, n=cards.length;
+  cards.forEach((c,i)=>{
+    if(reRotate||c.rot==null) c.rot=rand(-2.6,2.6);
+    const cw=c.el.offsetWidth||150, chh=c.el.offsetHeight||180;
+    const fanX=(i-(n-1)/2)*0.7, fanY=(i-(n-1)/2)*-0.6;
+    place(c, Math.round(cx-cw/2+fanX), Math.round(cy-chh/2+fanY), c.rot);
+    c.el.style.zIndex=10+i;
+  });
+  zTop=10+n;
+}
+function place(c,x,y,rot){ c.x=x;c.y=y;c.rot=rot||0;
+  c.el.style.left=x+"px";c.el.style.top=y+"px";c.el.style.transform="rotate("+(rot||0)+"deg)"; }
+
+function attachDrag(c){
+  const el=c.el; let sx,sy,ox,oy,moved,pid;
+  el.addEventListener("pointerdown",e=>{ if(e.button!==0)return;
+    pid=e.pointerId; el.setPointerCapture(pid); sx=e.clientX;sy=e.clientY;ox=c.x;oy=c.y;moved=false;
+    el.classList.add("dragging"); el.style.zIndex=++zTop; });
+  el.addEventListener("pointermove",e=>{ if(pid===undefined||e.pointerId!==pid)return;
+    const dx=e.clientX-sx,dy=e.clientY-sy; if(!moved&&Math.hypot(dx,dy)<5)return; moved=true;
+    const w=stage.clientWidth,h=stage.clientHeight;
+    place(c,Math.max(-28,Math.min(w-88,ox+dx)),Math.max(-8,Math.min(h-40,oy+dy)),c.rot); });
+  function end(){ if(pid===undefined)return; el.classList.remove("dragging");
+    try{el.releasePointerCapture(pid);}catch(_){ } if(!moved) openZoom(c); pid=undefined; }
+  el.addEventListener("pointerup",end); el.addEventListener("pointercancel",end);
+  el.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); openZoom(c); }});
+}
+
+const zoomCard=document.getElementById("zoom-card"),zoomCap=document.getElementById("zoom-cap"),zoomBio=document.getElementById("zoom-bio"),zoomFlip=document.getElementById("zoom-flip");
+function fitZoom(nw,nh){
+  const maxW=Math.min(window.innerWidth*0.9,1100), maxH=window.innerHeight*0.8;
+  const s=Math.min(maxW/nw,maxH/nh);
+  zoomCard.style.width=Math.round(nw*s)+"px"; zoomCard.style.height=Math.round(nh*s)+"px";
+}
+function openZoom(c){
+  zoomCard.classList.remove("flipped");
+  const front=zoomCard.querySelector(".zoom-front"); front.innerHTML="";
+  if(c.src){ const im=document.createElement("img"); im.alt="";
+    im.addEventListener("load",()=>fitZoom(im.naturalWidth||3,im.naturalHeight||2));
+    im.addEventListener("error",()=>{ zoomCard.style.width="420px"; zoomCard.style.height="520px"; front.innerHTML='<div class="placeholder">image pending</div>'; });
+    im.src=c.src; front.appendChild(im);
+    if(im.complete&&im.naturalWidth) fitZoom(im.naturalWidth,im.naturalHeight);
+  } else { zoomCard.style.width="420px"; zoomCard.style.height="520px"; front.innerHTML='<div class="placeholder">image pending</div>'; }
+  if(c.caption){ zoomCap.textContent=c.caption; zoomFlip.style.display=""; zoomFlip.textContent="Show caption"; }
+  else { zoomCap.textContent=""; zoomFlip.style.display="none"; }
+  zoomBio.textContent=c.bio||""; zoomBio.style.display=c.bio?"":"none";
+  openScrim("zoom-scrim");
+}
+function flipZoom(){ const f=zoomCard.classList.toggle("flipped"); zoomFlip.textContent=f?"Show picture":"Show caption"; }
+
+function wireUI(){
+  document.getElementById("btn-info").onclick=()=>openScrim("info-scrim");
+  document.getElementById("btn-axis-info").onclick=openAxisPanel;
+  document.getElementById("btn-upload").onclick=()=>document.getElementById("file").click();
+  document.getElementById("file").onchange=e=>{ if(e.target.files.length) loadOwn(e.target.files); e.target.value=""; };
+  document.getElementById("btn-reset").onclick=buildPractice;
+  document.getElementById("btn-shuffle").onclick=shuffleStack;
+  document.getElementById("btn-export").onclick=exportPNG;
+  zoomFlip.onclick=flipZoom;
+  document.querySelectorAll("[data-close]").forEach(b=>b.onclick=closeScrims);
+  document.querySelectorAll(".scrim").forEach(s=>s.addEventListener("click",e=>{ if(e.target===s)closeScrims(); }));
+  document.addEventListener("keydown",e=>{ if(e.key==="Escape")closeScrims(); });
+  window.addEventListener("resize",()=>{ stackPile(); computePitSize(); });
+}
+function openScrim(id){ document.getElementById(id).classList.add("open"); }
+function closeScrims(){ document.querySelectorAll(".scrim").forEach(s=>s.classList.remove("open")); }
+function openAxisPanel(){
+  const ax=currentAxis;
+  const links=ax.links.map(l=>'<a href="'+l[1]+'" target="_blank" rel="noopener">'+escapeHTML(l[0])+'</a>').join("");
+  document.getElementById("axis-panel").innerHTML=
+    '<button class="close" data-close aria-label="Close">×</button>'+
+    '<div class="eyebrow"><span class="swatch" style="background:'+ax.colour+'"></span>'+escapeHTML(ax.title)+'</div>'+
+    '<p>'+escapeHTML(ax.body)+'</p><h3>Where it comes from</h3><div class="links">'+links+'</div>';
+  document.querySelector("#axis-panel [data-close]").onclick=closeScrims;
+  openScrim("axis-scrim");
+}
+
+async function exportPNG(){
+  if(typeof html2canvas!=="function"){ alert("The export library did not load. Try again on a live page."); return; }
+  const btn=document.getElementById("btn-export"); const label=btn.textContent; btn.textContent="…"; btn.disabled=true;
+  try{
+    const canvas=await html2canvas(stage,{backgroundColor:null,scale:2,useCORS:true,logging:false,
+      ignoreElements:el=>el.classList&&el.classList.contains("no-export")});
+    canvas.toBlob(blob=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+      a.download="axis-"+currentAxis.id+".png"; a.click(); URL.revokeObjectURL(a.href); });
+  }catch(err){ alert("Couldn't render the image: "+err.message); }
+  finally{ btn.textContent=label; btn.disabled=false; }
+}
+function rand(a,b){ return a+Math.random()*(b-a); }
+function escapeHTML(s){ return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+</script>
+</body>
+</html>
